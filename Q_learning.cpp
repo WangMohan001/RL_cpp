@@ -3,7 +3,7 @@
 #include<cmath>
 #include<cstdlib>
 #include<ctime>
-#include "cliff_walking.cpp"
+#include "oasis.cpp"
 
 
 class agent{ //q-learning
@@ -14,7 +14,7 @@ private:
     double epsilon;
     action actions[4] = {action(0,1),action(0,-1),action(1,0),action(-1,0)};
 public:
-    agent(double alpha = 0.3 , double gamma = 0.8, double epsilon = 1){
+    agent(double alpha = 0.4 , double gamma = 1, double epsilon = 1){
         this->alpha = alpha;
         this->gamma = gamma;
         this->epsilon = epsilon;
@@ -28,8 +28,8 @@ public:
         int x = s.get_x();
         int y = s.get_y();
         int a;
-        double eps=epsilon/(time_step+1);
-        
+        double eps=epsilon/(time_step / 2 + 1);
+        //double eps=0.3;
         if((double)rand()/RAND_MAX<eps){
             a = rand()%4;
             while(!s.get_next_state(actions[a]).is_valid()){
@@ -73,7 +73,7 @@ public:
             return;
         }
         int a_prime = -1;
-        for(int i=1;i<4;i++){
+        for(int i=0;i<4;i++){
             if(!s_prime.get_next_state(actions[i]).is_valid()){
                 continue;
             }
@@ -84,15 +84,23 @@ public:
         q_values[s.get_hash()][a] = q_values[s.get_hash()][a] + alpha*(r+gamma*q_values[s_prime.get_hash()][a_prime]-q_values[s.get_hash()][a]);
     }
     void print_q(){
-        for(int i=0;i<4;i++){
-            for(int j=0;j<12;j++){
-                for(int k=0;k<4;k++){
-                    std::cout<<i<<","<<j<<" choose"<<k<<" "<<q_values[state(i,j).get_hash()][k]<<"\n";
-                }
-            std::cout<<std::endl;
+        auto all_states = state::get_all_states();
+        for(auto s:all_states){
+            if(s.is_terminal()){
+                continue;
+            }   
+            std::cout<<s.get_x()<<" "<<s.get_y()<<std::endl;
+            for(int i=0;i<4;i++){
+                std::cout<<q_values[s.get_hash()][i]<<" ";
             }
+            std::cout<<std::endl;
         }
-    
+    }
+    void print_q(state s){
+        for(int i=0;i<4;i++){
+            std::cout<<actions[i].dx<<" "<<actions[i].dy<<" : "<<q_values[s.get_hash()][i]<<std::endl;
+        }
+        std::cout<<std::endl;
     }
 };
 
@@ -109,7 +117,10 @@ int turn(agent& a, state& s, int ti, int display = 0 ){
         state s_prime = s.get_next_state(act);
         a.update(s, act, s_prime);
         s = s_prime;
-        if(display) s.print();
+        if(display) {
+            s.print();
+            
+        }
 
         ret += s.get_reward();
     }
@@ -119,20 +130,21 @@ int turn(agent& a, state& s, int ti, int display = 0 ){
 int main(){
     srand(time(NULL));
     agent a;
-    state s(0,0);
+    state s = state::beginning_state();
     int total_reward = 0;
-    int num=1000;
+    int num=100;
     for(int i=0;i<num;i++){
         int tmp = turn(a, s, i);
-        s = state(3,0);
+        s = state::beginning_state();
         std::cout<<i<<" "<<tmp<<std::endl;
         total_reward += tmp;
     }
     std::cout<<total_reward<<std::endl;
     std::cout<<(double)total_reward/num<<std::endl;
-    std::cout<<"regrets = "<<total_reward+13*num<<std::endl;
-    s=state(3,0);
-    turn(a, s,1000000, 1);
+    std::cout<<"regrets = "<<total_reward-21*num<<std::endl;
+    s=state::beginning_state();
+    turn(a, s,100000000, 1);
+    //a.print_q();
     return 0;
 
 }
